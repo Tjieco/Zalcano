@@ -28,17 +28,23 @@ public class ZalcanoOverlay extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics2D) {
-        makeTitle();
-        makePlayerCount();
+        showTitle();
+        showPlayerCount();
+        showDamageDealt();
         return super.render(graphics2D);
     }
 
-    private void makeTitle() {
+    private void showTitle() {
         panelComponent.getChildren().add(TitleComponent.builder().text("Zalcano plugin").build());
     }
 
-    private void makePlayerCount() {
-        int playercount = plugin.getPlayerCount();
+    private void showPlayerCount() {
+        int playercount = plugin.getPlayersParticipating().size();
         panelComponent.getChildren().add(LineComponent.builder().left("Players: " + playercount).build());
+    }
+
+    private void showDamageDealt() {
+        panelComponent.getChildren().add(LineComponent.builder().left("Shield Damage dealt: " + plugin.getShieldDamageDealt() + " / " + plugin.getMinimumDamageRewardShield()).build());
+        panelComponent.getChildren().add(LineComponent.builder().left("Mining Damage dealt: " + plugin.getMiningDamageDealt() + " / " + plugin.getMinimumDamageRewardMining()).build());
     }
 }

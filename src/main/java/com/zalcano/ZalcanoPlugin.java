@@ -13,6 +13,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.components.PanelComponent;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -36,33 +37,40 @@ public class ZalcanoPlugin extends Plugin
 	@Inject
 	private ZalcanoOverlay zalcanoOverlay;
 
-	private int playercount = 0;
-	private int minExcludedX = 3033;
-	private int maxExcludedX = 3034;
-
-	private int minExcludedY = 6063;
-	private int maxExcludedY = 6065;
-
-	private int plane = 0;
+	private List<Player> playersInSight;
 
 	@Getter
-	private List<Player> playersInSight;
-	private List<WorldPoint> excludedWorldPoints = new ArrayList<>();
+	private List<Player> playersParticipating = new ArrayList<>();
 
+	private final List<WorldPoint> excludedWorldPoints = new ArrayList<>();
+
+	@Getter
+	private int shieldDamageDealt;
+
+	@Getter
+	private final int minimumDamageRewardShield = 30;
+
+	@Getter
+	private int miningDamageDealt;
+
+	@Getter
+	private final int minimumDamageRewardMining = 30;
 
 	@Override
 	protected void startUp() throws Exception
 	{
+		log.info("Zalcano plugin started");
 		overlayManager.add(zalcanoOverlay);
 
+		addExcludedWorldPoints();
 
-		for(int x = minExcludedX; x <= maxExcludedX; x++) {
-			for(int y =minExcludedY; y <= maxExcludedY; y++) {
-				excludedWorldPoints.add(new WorldPoint(x, y, plane));
-			}
-		}
-		log.info("Zalcano plugin started");
-		playercount = 0;
+		playersParticipating = new ArrayList<>();
+		playersInSight = new ArrayList<>(client.getPlayers());
+		// Clear null values
+		while (true) if (!playersInSight.remove(null)) break;
+
+		shieldDamageDealt = 0;
+		miningDamageDealt = 0;
 	}
 
 	@Override
@@ -70,7 +78,6 @@ public class ZalcanoPlugin extends Plugin
 	{
 		overlayManager.remove(zalcanoOverlay);
 		log.info("Zalcano plugin stopped");
-		playercount = 0;
 	}
 
 	@Subscribe
@@ -79,83 +86,104 @@ public class ZalcanoPlugin extends Plugin
 		if (gameStateChanged.getGameState() == GameState.LOGGED_IN)
 		{
 			playersInSight = new ArrayList<>(client.getPlayers());
+			// Clear null values
+			while (true) if (!playersInSight.remove(null)) break;
 		}
 	}
 
 	@Subscribe
 	public void onPlayerDespawned(PlayerDespawned playerDespawned)
 	{
-		Player player = playerDespawned.getPlayer();
-		playersInSight = new ArrayList<>(client.getPlayers());
-		playersInSight.remove(player);
-
-		filterPlayersAtGate(playersInSight);
-
-		playercount = playersInSight.size();
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", String.format("player: %s has despawned at position: %s, %s Plane: %s",
-				player.getName(),
-				player.getWorldLocation().getX(),
-				player.getWorldLocation().getY(),
-				player.getWorldLocation().getPlane()
-		), null);client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "new playercount: " + playercount, null);
+		playersParticipating.remove(playerDespawned.getPlayer());
+		playersInSight.remove(playerDespawned.getPlayer());
 	}
 
 	@Subscribe
 	public void onPlayerSpawned(PlayerSpawned playerSpawned)
 	{
-		Player player = playerSpawned.getPlayer();
-		playersInSight = new ArrayList<>(client.getPlayers());
-		filterPlayersAtGate(playersInSight);
-		playercount = playersInSight.size();
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", String.format("player: %s has spawned at position: %s, %s Plane: %s",
-				player.getName(),
-				player.getWorldLocation().getX(),
-				player.getWorldLocation().getY(),
-				player.getWorldLocation().getPlane()
-		), null);
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "new playercount: " + playercount, null);
+		playersInSight.add(playerSpawned.getPlayer());
 	}
 
 	@Subscribe
-	public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+	public void onGameTick(GameTick gameTick) {
+		filterPlayersAtGate(playersInSight);
+	}
+
+	@Subscribe
+	public void onNpcSpawned(NpcSpawned npcSpawned)
 	{
-		int id = widgetLoaded.getGroupId();
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "widget has been opened " + id, null);
+		NPC npc = npcSpawned.getNpc();
+		if (npc.getId() == ZalcanoStates.THROWING || npc.getId() == ZalcanoStates.MINING) updateZalcano(npc);
+	}
+
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned npcDespawned) {
+		NPC npc = npcDespawned.getNpc();
+		if (npc.isDead() && npc.getId() == ZalcanoStates.MINING) {
+			// TODO: use Zalcano states to display these statistics after the kill is over
+			shieldDamageDealt = 0;
+			miningDamageDealt = 0;
+		}
+	}
+
+
+	@Subscribe
+	public void onHitsplatApplied(HitsplatApplied hitsplatApplied) {
+		if (hitsplatApplied.getHitsplat().isMine()) {
+			if (hitsplatApplied.getActor() instanceof NPC) {
+				NPC npc = (NPC) hitsplatApplied.getActor();
+				if (npc.getId() == ZalcanoStates.THROWING) {
+					shieldDamageDealt += hitsplatApplied.getHitsplat().getAmount();
+				} else if (npc.getId() == ZalcanoStates.MINING) {
+					miningDamageDealt += hitsplatApplied.getHitsplat().getAmount();
+				}
+				updateZalcano(npc);
+			}
+		}
+	}
+
+	private void updateZalcano(NPC zalcano) {
+		// Standing Zalcano
+		if (zalcano.getId() == ZalcanoStates.THROWING) {
+			// client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Standing Zalcano Found, Healthscale: " + zalcano.getHealthScale() + ", Healthratio: " + zalcano.getHealthRatio(), null);
+		}
+		// Sitting Zalcano
+		else if (zalcano.getId() == ZalcanoStates.MINING) {
+			// client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", "Sitting Zalcano Found, Healthscale: " + zalcano.getHealthScale() + ", Healthratio: " + zalcano.getHealthRatio(), null);
+		}
 	}
 
 	private void filterPlayersAtGate(List<Player> players) {
-		while (true) {
-			if (!playersInSight.remove(null)) break;
-		}
-		List<Player> playersToRemove = new ArrayList<>();
+
+
 		for(Player p : players) {
 			WorldPoint playerLocation = p.getWorldLocation();
 			if (excludedWorldPoints.contains(playerLocation)) {
-				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", String.format("player: %s is on an excluded tile", p.getName()), null);
-				playersToRemove.add(p);
+				playersParticipating.remove(p);
+			} else {
+				if (!playersParticipating.contains(p)) playersParticipating.add(p);
 			}
 		}
-		for(Player p : playersToRemove) {
-			players.remove(p);
+	}
+
+	private void addExcludedWorldPoints() {
+		int plane = 0;
+		int minExcludedX = 3033;
+		int maxExcludedX = 3034;
+
+		int minExcludedY = 6063;
+		int maxExcludedY = 6065;
+
+		for(int x = minExcludedX; x <= maxExcludedX; x++) {
+			for(int y =minExcludedY; y <= maxExcludedY; y++) {
+				excludedWorldPoints.add(new WorldPoint(x, y, plane));
+			}
 		}
-		String playerstring = " ";
-		for(Player p : playersInSight) {
-			playerstring += p.getName() + ", ";
-		}
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", String.format("players: %s (%s)", playerstring, playersInSight.size()), null);
 	}
 
 	@Provides
 	ZalcanoConfig provideConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(ZalcanoConfig.class);
-	}
-
-	public int getPlayerCount() {
-		if (getPlayersInSight() == null) {
-			return 0;
-		} else {
-			return getPlayersInSight().size();
-		}
 	}
 }
