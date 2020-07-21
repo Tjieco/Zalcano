@@ -3,7 +3,7 @@ Multi-purpose Zalcano Utilities for both casual players as well as pet hunters. 
 ## Scouting information
 * If Zalcano is out of vision the health won't update, so be careful.
 * The plugin doesn't rely on the health overlay option, but having it on makes the health indicator more accurate. See image below for the option:
-![Enable Health Overlay](https://imgur.com/EjcCTZT)
+![Enable Health Overlay](https://i.imgur.com/EjcCTZT.png)
 
 ##Features
 * Showing the amount of players in the cave.
