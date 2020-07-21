@@ -83,12 +83,16 @@ public class ZalcanoPlugin extends Plugin
 	@Getter
 	private int shieldDamageDealt;
 	@Getter
-	private final int minimumDamageRewardShield = 30;
+	private final int minimumDamageLootShield = 30;
+	@Getter
+	private final int minimumDamageUniquesShield = 50;
 
 	@Getter
 	private int miningDamageDealt;
 	@Getter
-	private final int minimumDamageRewardMining = 30;
+	private final int minimumDamageLootMining = 30;
+	@Getter
+	private final int minimumDamageUniquesMining = 50;
 
 	@Getter
 	private float chanceOfToolSeedTable = 0;

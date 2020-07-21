@@ -93,11 +93,11 @@ public class ZalcanoOverlay extends OverlayPanel {
 
     private void showDamageDealt()
     {
-        Color color = decideColorBasedOnThreshold(plugin.getShieldDamageDealt(), plugin.getMinimumDamageRewardShield(), 0);
-        panelComponent.getChildren().add(LineComponent.builder().left("Shield Damage dealt: " + plugin.getShieldDamageDealt() + " / " + plugin.getMinimumDamageRewardShield()).leftColor(color).build());
+        Color color = decideColorBasedOnThreshold(plugin.getShieldDamageDealt(), plugin.getMinimumDamageUniquesShield(), plugin.getMinimumDamageLootShield());
+        panelComponent.getChildren().add(LineComponent.builder().left("Shield Damage dealt: " + plugin.getShieldDamageDealt() + " / " + plugin.getMinimumDamageUniquesShield()).leftColor(color).build());
 
-        color = decideColorBasedOnThreshold(plugin.getMiningDamageDealt(), plugin.getMinimumDamageRewardMining(), 0);
-        panelComponent.getChildren().add(LineComponent.builder().left("Mining Damage dealt: " + plugin.getMiningDamageDealt() + " / " + plugin.getMinimumDamageRewardMining()).leftColor(color).build());
+        color = decideColorBasedOnThreshold(plugin.getMiningDamageDealt(), plugin.getMinimumDamageUniquesMining(), plugin.getMinimumDamageLootMining());
+        panelComponent.getChildren().add(LineComponent.builder().left("Mining Damage dealt: " + plugin.getMiningDamageDealt() + " / " + plugin.getMinimumDamageUniquesMining()).leftColor(color).build());
     }
 
     private Color decideColorBasedOnThreshold(int damage, int greenThreshold, int yellowThreshold)
