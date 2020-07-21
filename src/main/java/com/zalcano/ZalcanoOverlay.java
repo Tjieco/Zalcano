@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2018, Tomas Slusny <slusnucky@gmail.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 package com.zalcano;
 
 import net.runelite.api.Client;
@@ -14,6 +38,7 @@ public class ZalcanoOverlay extends OverlayPanel {
     private final ZalcanoPlugin plugin;
     private final ZalcanoConfig config;
 
+
     @Inject
     private ZalcanoOverlay(Client client, ZalcanoPlugin plugin, ZalcanoConfig config)
     {
@@ -27,7 +52,8 @@ public class ZalcanoOverlay extends OverlayPanel {
     }
 
     @Override
-    public Dimension render(Graphics2D graphics2D) {
+    public Dimension render(Graphics2D graphics2D)
+    {
         if (!shouldShowOverlay()) return null;
         showTitle();
         if (config.showPlayerCount()) showPlayerCount();
@@ -37,43 +63,56 @@ public class ZalcanoOverlay extends OverlayPanel {
         return super.render(graphics2D);
     }
 
-    private boolean shouldShowOverlay() {
+    private boolean shouldShowOverlay()
+    {
         return plugin.playerInZalcanoArea();
     }
 
-    private void showTitle() {
+    private void showTitle()
+    {
         panelComponent.getChildren().add(TitleComponent.builder().text("Zalcano").build());
     }
 
-    private void showPlayerCount() {
+    private void showPlayerCount()
+    {
         int playercount = plugin.getPlayersParticipating().size();
         panelComponent.getChildren().add(LineComponent.builder().left("Players: " + playercount).build());
     }
 
-    private void showHealth() {
-        String miningHp = plugin.getMiningHp() == null ? "Unknown" : plugin.getMiningHp();
-        panelComponent.getChildren().add(LineComponent.builder().left("Mining HP:  " + miningHp).build());
-        String throwingHp = plugin.getThrowingHp() == null ? "Unknown" : plugin.getThrowingHp();
-        if (plugin.getZalcanoState() == ZalcanoStates.THROWING) panelComponent.getChildren().add(LineComponent.builder().left("Throwing HP:  " + throwingHp).build());
+    private void showHealth()
+    {
+        int firstPhaseHealth = 640;
+        int secondPhaseHealth = 360;
+        int miningHp = plugin.getMiningHp();
+        int phase = miningHp > firstPhaseHealth ? 1 : miningHp > secondPhaseHealth ? 2 : 3;
+
+        Color color = decideColorBasedOnThreshold(miningHp, firstPhaseHealth, secondPhaseHealth);
+        panelComponent.getChildren().add(LineComponent.builder().left("Mining HP:  " + miningHp + " / 1000 (Phase: " + phase + ")").leftColor(color).build());
+        if (plugin.getZalcanoState() == ZalcanoStates.THROWING) panelComponent.getChildren().add(LineComponent.builder().left("Throwing HP:  " + plugin.getThrowingHp() + " / 300").build());
     }
-    private void showDamageDealt() {
-        Color color = decideColorBasedOnThreshold(plugin.getShieldDamageDealt(), plugin.getMinimumDamageRewardShield());
+
+    private void showDamageDealt()
+    {
+        Color color = decideColorBasedOnThreshold(plugin.getShieldDamageDealt(), plugin.getMinimumDamageRewardShield(), 0);
         panelComponent.getChildren().add(LineComponent.builder().left("Shield Damage dealt: " + plugin.getShieldDamageDealt() + " / " + plugin.getMinimumDamageRewardShield()).leftColor(color).build());
-        color = decideColorBasedOnThreshold(plugin.getMiningDamageDealt(), plugin.getMinimumDamageRewardMining());
+
+        color = decideColorBasedOnThreshold(plugin.getMiningDamageDealt(), plugin.getMinimumDamageRewardMining(), 0);
         panelComponent.getChildren().add(LineComponent.builder().left("Mining Damage dealt: " + plugin.getMiningDamageDealt() + " / " + plugin.getMinimumDamageRewardMining()).leftColor(color).build());
     }
 
-    private Color decideColorBasedOnThreshold(int damage, int threshold) {
-        if (damage >= threshold) {
+    private Color decideColorBasedOnThreshold(int damage, int greenThreshold, int yellowThreshold)
+    {
+        if (damage >= greenThreshold) {
             return Color.GREEN;
-        } else if (damage > 0) {
+        } else if (damage > yellowThreshold) {
             return Color.YELLOW;
         } else {
             return Color.RED;
         }
     }
 
-    private void showToolSeedCalculations() {
+    private void showToolSeedCalculations()
+    {
         panelComponent.getChildren().add(LineComponent.builder().left("Chance of tool seed: " + String.format("%.3g", plugin.getChanceOfToolSeedTable() * 100) + "%").build());
     }
 }
