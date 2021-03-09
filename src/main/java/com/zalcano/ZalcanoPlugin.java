@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
+import net.runelite.api.ScriptEvent;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.api.widgets.Widget;
@@ -46,7 +47,7 @@ import java.util.Objects;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Zalcano"
+	name = "ZalcanoUtility"
 )
 public class ZalcanoPlugin extends Plugin
 {
@@ -124,14 +125,19 @@ public class ZalcanoPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onWidgetHiddenChanged(WidgetHiddenChanged widgetHiddenChanged)
-	{
-		Widget widget = widgetHiddenChanged.getWidget();
-		if (widget.getId() == hpBarWidgetId)
-		{
-			hpBarHidden = widget.isHidden();
-			if (!hpBarHidden) hpBar = widget;
-		}
+	public void onScriptPreFired(ScriptPreFired scriptPreFired) {
+			ScriptEvent event = scriptPreFired.getScriptEvent();
+			if (event != null) {
+				Widget widget = event.getSource();
+				if (widget != null) {
+					if (widget.getId() == hpBarWidgetId) {
+						hpBarHidden = widget.isHidden();
+						if (!hpBarHidden) hpBar = widget;
+					}
+				}
+			}
+
+
 	}
 
 	@Subscribe
