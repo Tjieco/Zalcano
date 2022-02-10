@@ -52,6 +52,12 @@ public class ZalcanoOverlay extends OverlayPanel {
     }
 
     @Override
+    public String getName()
+    {
+        return "ZalcanoUtilityOverlay";
+    }
+
+    @Override
     public Dimension render(Graphics2D graphics2D)
     {
         if (!shouldShowOverlay()) return null;

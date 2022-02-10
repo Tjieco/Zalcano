@@ -47,6 +47,7 @@ import java.util.Objects;
 
 @Slf4j
 @PluginDescriptor(
+	configName = "ZalcanoUtility",
 	name = "ZalcanoUtility"
 )
 public class ZalcanoPlugin extends Plugin
